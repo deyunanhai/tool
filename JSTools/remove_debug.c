@@ -18,6 +18,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define BUFFER_SIZE 4096
 #define START_DEBUG_CODE "--start debug--"
@@ -40,9 +41,11 @@ int is(const char *s, const char *control) {
 }
 
 int usage() {
-    printf("%s\n", "delete javascript debug code");
+    printf("%s\n", "remove javascript debug code");
     printf("%s\n", "-i inputfile");
     printf("%s\n", "-o outputfile");
+    printf("%s\n", "-s remove debug code start control string. default is " START_DEBUG_CODE);
+    printf("%s\n", "-o remote debug code end control string. default is " END_DEBUG_CODE);
     return 1;
 }
 
@@ -51,14 +54,17 @@ int main(int argc, char *argv[]) {
     char buffer[BUFFER_SIZE];
     FILE *in,*out;
     int start_delete, i;
+    char *start_debug_code, *end_debug_code;
 
     in = out = 0;
     start_delete = 0;
+    start_debug_code = end_debug_code = 0;
     for(i=1;i<argc;i++) {
         if(argv[i][0] == '-') {
+#define check_more_args() do { if((++i) > argc-1) return usage(); } while(0)
             switch(argv[i][1]) {
                 case 'i':
-                    if((++i) > argc-1) return usage();
+                    check_more_args();
                     in = fopen(argv[i], "rb");
                     if(!in) {
                         fprintf(stderr, "can't open file to read. %s", argv[i]);
@@ -66,30 +72,47 @@ int main(int argc, char *argv[]) {
                     }
                     break;
                 case 'o':
-                    if((++i) > argc-1) return usage();
+                    check_more_args();
                     out = fopen(argv[i], "wb+");
                     if(!out) {
                         fprintf(stderr, "can't open file to read. %s", argv[i]);
                         return 2;
                     }
+                    break;
+                case 's':
+                    check_more_args();
+                    start_debug_code = argv[i];
+                    break;
+                case 'e':
+                    check_more_args();
+                    end_debug_code = argv[i];
+                    break;
+                default:
+                    return usage();
             }
+#undef chec_more_args
         }
     }
 
     if(!in) in = stdin;
     if(!out) out = stdout;
+    if(!start_debug_code) start_debug_code = START_DEBUG_CODE;
+    if(!end_debug_code) end_debug_code = END_DEBUG_CODE;
+
 
     while(fgets(buffer, BUFFER_SIZE, in)) {
         if(!start_delete) {
-            if(is(buffer, START_DEBUG_CODE)) {
+            if(is(buffer, start_debug_code)) {
                 start_delete = 1;
             } else {
                 fprintf(out, "%s", buffer);
             }
         } else {
-            if(is(buffer, END_DEBUG_CODE)) {
+            if(is(buffer, end_debug_code)) {
                 start_delete = 0;
             }
         }
     }
+
+    return 0;
 }
